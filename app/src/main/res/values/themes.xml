@@ -1,0 +1,9 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.MoviesApp_Part2_YassineJaabouk" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Customize your light theme here. -->
+        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+    </style>
+
+    <style name="Theme.MoviesApp_Part2_YassineJaabouk" parent="Base.Theme.MoviesApp_Part2_YassineJaabouk" />
+</resources>
