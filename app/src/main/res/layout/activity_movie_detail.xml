@@ -1,70 +1,139 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
+    android:layout_height="match_parent"
     android:orientation="vertical"
-    android:layout_height="wrap_content">
+    android:background="#F5F5F5">
 
-    <androidx.cardview.widget.CardView
-        app:cardElevation="10dp"
-        app:cardCornerRadius="10dp"
-        android:layout_margin="5dp"
-        app:cardBackgroundColor="#FFFFFF"
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/detailToolbar"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/white"
+        app:navigationIcon="@android:drawable/ic_menu_revert"
+        app:title="Movie Details"
+        app:titleTextColor="#E50914" />
 
-        <LinearLayout
-            android:orientation="horizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <ImageView
-                android:layout_margin="10dp"
-                android:id="@+id/imageview"
-                android:layout_width="120dp"
-                android:layout_height="150dp"/>
-
-            <LinearLayout
-                android:layout_weight="1"
-                android:gravity="center"
-                android:orientation="vertical"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent">
-
-                <TextView
-                    android:id="@+id/textName"
-                    android:textStyle="bold"
-                    android:layout_margin="7dp"
-                    android:text="Movie Name"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"/>
-
-                <TextView
-                    android:id="@+id/Details"
-                    android:layout_margin="5dp"
-                    android:textColor="#000"
-                    android:textSize="12sp"
-                    android:text="Movie Description"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"/>
-
-            </LinearLayout>
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
-
-    <Button
-        android:id="@+id/playButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Play Movie"
-        android:layout_marginTop="16dp"/>
-
-    <fragment
-        android:id="@+id/map"
-        android:name="com.google.android.gms.maps.SupportMapFragment"
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginTop="90dp"/>
+        android:fillViewport="true">
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="8dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <ImageView
+                        android:id="@+id/imageview"
+                        android:layout_width="match_parent"
+                        android:layout_height="300dp"
+                        android:scaleType="centerCrop"
+                        android:background="#E0E0E0" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:id="@+id/textName"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textColor="#212121"
+                            android:textSize="24sp"
+                            android:textStyle="bold"
+                            android:text="Movie Title" />
+
+                        <TextView
+                            android:id="@+id/Details"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:lineSpacingExtra="4dp"
+                            android:textColor="#424242"
+                            android:textSize="16sp"
+                            android:text="Detailed movie description goes here." />
+
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="16dp"
+                android:weightSum="2">
+
+                <Button
+                    android:id="@+id/playButton"
+                    android:layout_width="0dp"
+                    android:layout_height="60dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:backgroundTint="#E50914"
+                    android:text="Trailer"
+                    android:textAllCaps="false"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="12dp"
+                    android:drawableStart="@android:drawable/ic_media_play"
+                    android:paddingStart="12dp"/>
+
+                <Button
+                    android:id="@+id/watchedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="60dp"
+                    android:layout_weight="1"
+                    android:backgroundTint="#4CAF50"
+                    android:text="Mark Watched"
+                    android:textAllCaps="false"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="12dp"
+                    android:drawableStart="@android:drawable/checkbox_on_background"
+                    android:paddingStart="12dp"/>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="Nearby Cinema Location"
+                android:textColor="#333"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="250dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="24dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp">
+
+                <fragment
+                    android:id="@+id/map"
+                    android:name="com.google.android.gms.maps.SupportMapFragment"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+            </androidx.cardview.widget.CardView>
+
+        </LinearLayout>
+    </ScrollView>
 </LinearLayout>

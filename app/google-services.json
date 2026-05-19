@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "796263038441",
+    "project_id": "moviesapp-part2-yassinejaabouk",
+    "storage_bucket": "moviesapp-part2-yassinejaabouk.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:796263038441:android:01b2620b85a367f4195f78",
+        "android_client_info": {
+          "package_name": "com.example.moviesapp_part2_yassinejaabouk"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA5GouUxwA-2L1HKijunqb8sKqrLeen7eE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
