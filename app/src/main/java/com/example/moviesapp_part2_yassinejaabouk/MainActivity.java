@@ -18,6 +18,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -26,6 +27,7 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.navigation.NavigationView;
@@ -44,9 +46,19 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
+// Gemini AI SDK imports
+import com.google.ai.client.generativeai.GenerativeModel;
+import com.google.ai.client.generativeai.java.GenerativeModelFutures;
+import com.google.ai.client.generativeai.type.Content;
+import com.google.ai.client.generativeai.type.GenerateContentResponse;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+
 public class MainActivity extends AppCompatActivity {
 
-    private static final String TMDB_API_KEY = "d54cde38155b4c4da726ac95ed215079";
+    private static final String TMDB_API_KEY = BuildConfig.TMDB_API_KEY;
+    private static final String GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY;
     private static final String BASE_URL = "https://api.themoviedb.org/3/";
 
     private DrawerLayout drawerLayout;
@@ -56,6 +68,7 @@ public class MainActivity extends AppCompatActivity {
     private TextInputEditText searchEditText;
     private TextInputLayout searchInputLayout;
     private ImageButton logoutButton, menuButton, filterButton;
+    private MaterialButton vibeSearchBtn;
     private ChipGroup chipGroup;
     private ProgressBar progressBar;
     
@@ -69,8 +82,8 @@ public class MainActivity extends AppCompatActivity {
     private String currentSearchQuery = "";
     private String sortBy = "popularity.desc";
 
-    private List<MyMovieData> allFetchedMovies = new ArrayList<>();
-    private Handler searchHandler = new Handler(Looper.getMainLooper());
+    private final List<MyMovieData> allFetchedMovies = new ArrayList<>();
+    private final Handler searchHandler = new Handler(Looper.getMainLooper());
     private Runnable searchRunnable;
 
     private final ActivityResultLauncher<Intent> voiceSearchLauncher = registerForActivityResult(
@@ -109,6 +122,7 @@ public class MainActivity extends AppCompatActivity {
         logoutButton = findViewById(R.id.logoutButton);
         menuButton = findViewById(R.id.menuButton);
         filterButton = findViewById(R.id.filterButton);
+        vibeSearchBtn = findViewById(R.id.vibeSearchBtn);
         chipGroup = findViewById(R.id.chipGroup);
         progressBar = findViewById(R.id.progressBar);
         recyclerView = findViewById(R.id.recyclerView);
@@ -182,6 +196,8 @@ public class MainActivity extends AppCompatActivity {
 
         searchInputLayout.setEndIconOnClickListener(v -> startVoiceSearch());
 
+        vibeSearchBtn.setOnClickListener(v -> performVibeSearch());
+
         logoutButton.setOnClickListener(v -> {
             mAuth.signOut();
             startActivity(new Intent(MainActivity.this, LoginActivity.class));
@@ -218,7 +234,7 @@ public class MainActivity extends AppCompatActivity {
                     selectedGenreId = (int) chip.getTag();
                 } else {
                     selectedGenreId = -1;
-                    if (!searchEditText.getText().toString().isEmpty()) {
+                    if (searchEditText.getText() != null && !searchEditText.getText().toString().isEmpty()) {
                         searchEditText.setText(""); 
                         return; 
                     }
@@ -230,6 +246,51 @@ public class MainActivity extends AppCompatActivity {
             myMovieAdapter.clearMovies();
             fetchMovies(false);
         });
+    }
+
+    private void performVibeSearch() {
+        if (searchEditText.getText() == null) return;
+        String query = searchEditText.getText().toString().trim();
+        if (query.isEmpty()) {
+            Toast.makeText(this, "Type a vibe first (e.g., 'rainy Sunday movie')", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        progressBar.setVisibility(View.VISIBLE);
+        vibeSearchBtn.setEnabled(false);
+
+        // Using Gemini AI SDK
+        GenerativeModel gm = new GenerativeModel("gemini-1.5-flash", GEMINI_API_KEY);
+        GenerativeModelFutures model = GenerativeModelFutures.from(gm);
+
+        Content content = new Content.Builder()
+                .addText("Extract 2 or 3 essential search keywords from this movie 'vibe' query. " +
+                        "Return ONLY the keywords separated by spaces, nothing else. Query: " + query)
+                .build();
+
+        ListenableFuture<GenerateContentResponse> response = model.generateContent(content);
+        Futures.addCallback(response, new FutureCallback<GenerateContentResponse>() {
+            @Override
+            public void onSuccess(GenerateContentResponse result) {
+                String keywords = result.getText().trim().replaceAll("[^a-zA-Z0-9 ]", "");
+                runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    vibeSearchBtn.setEnabled(true);
+                    searchEditText.setText(keywords);
+                    Toast.makeText(MainActivity.this, "AI Suggestion: " + keywords, Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onFailure(@NonNull Throwable t) {
+                Log.e("VIBE_SEARCH", "AI Error: " + t.getMessage(), t);
+                runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    vibeSearchBtn.setEnabled(true);
+                    Toast.makeText(MainActivity.this, "AI Search failed. Check logs.", Toast.LENGTH_LONG).show();
+                });
+            }
+        }, ContextCompat.getMainExecutor(this));
     }
 
     private void startVoiceSearch() {
@@ -267,9 +328,9 @@ public class MainActivity extends AppCompatActivity {
         List<MyMovieData> listToDisplay = new ArrayList<>(allFetchedMovies);
 
         if (sortBy.equals("vote_average.desc")) {
-            Collections.sort(listToDisplay, (m1, m2) -> Double.compare(m2.getRating(), m1.getRating()));
+            listToDisplay.sort((m1, m2) -> Double.compare(m2.getRating(), m1.getRating()));
         } else if (sortBy.equals("release_date.desc")) {
-            Collections.sort(listToDisplay, (m1, m2) -> m2.getMovieDate().compareTo(m1.getMovieDate()));
+            listToDisplay.sort((m1, m2) -> m2.getMovieDate().compareTo(m1.getMovieDate()));
         }
 
         myMovieAdapter.clearMovies();

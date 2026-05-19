@@ -46,7 +46,7 @@ public class WatchedMoviesActivity extends AppCompatActivity {
     private FloatingActionButton aiRecommendBtn;
 
     private static final String BASE_URL = "http://10.0.2.2:8000";
-    private static final String GEMINI_API_KEY = "AIzaSyCwexL310B1d4UECYYfC2dpeLQOEMzkN28"; // ✅ updated key
+    private static final String GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,7 +99,8 @@ public class WatchedMoviesActivity extends AppCompatActivity {
         // Run network call on background thread
         new Thread(() -> {
             try {
-                String apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY;
+                // Using gemini-1.5-flash as it is more stable
+                String apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + GEMINI_API_KEY;
 
                 JSONObject requestBody = new JSONObject()
                         .put("contents", new org.json.JSONArray()

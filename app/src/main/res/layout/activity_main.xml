@@ -107,6 +107,19 @@
                         android:padding="12dp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/vibeSearchBtn"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="✨ Vibe Search (AI)"
+                    android:textAllCaps="false"
+                    android:textColor="#E50914"
+                    app:icon="@android:drawable/ic_menu_search"
+                    app:iconTint="#E50914"
+                    app:strokeColor="#E50914" />
+
                 <HorizontalScrollView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
