@@ -1,5 +1,6 @@
 package com.example.moviesapp_part2_yassinejaabouk;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
@@ -80,28 +81,21 @@ public class WatchedMoviesActivity extends AppCompatActivity {
             return;
         }
 
-        StringBuilder movieTitles = new StringBuilder();
-        for (MyMovieData movie : watchedList) {
-            movieTitles.append("- ")
-                    .append(movie.getMovieName())
-                    .append(" (Rating: ")
-                    .append(movie.getRating())
-                    .append(")\n");
-        }
-
         if (progressBar != null) progressBar.setVisibility(View.VISIBLE);
         if (aiRecommendBtn != null) aiRecommendBtn.setEnabled(false);
 
-        String prompt = "I have watched these movies:\n" + movieTitles.toString() +
-                "\nBased on my taste, recommend 5 similar movies I would enjoy. " +
-                "For each movie include: title, year, and one sentence on why I'd like it.";
+        StringBuilder movieTitles = new StringBuilder();
+        for (MyMovieData movie : watchedList) {
+            movieTitles.append(movie.getMovieName()).append(", ");
+        }
 
-        // Run network call on background thread
+        String prompt = "I have watched these movies: " + movieTitles.toString() +
+                "Return ONLY one single English word that best describes the vibe or genre of these movies for a database keyword search. " +
+                "Examples: 'romance', 'adventure', 'thriller', 'comedy', 'heartbreak'. " +
+                "No explanation, just one word.";
+
         new Thread(() -> {
             try {
-                // Using gemini-1.5-flash as it is more stable
-                String apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + GEMINI_API_KEY;
-
                 JSONObject requestBody = new JSONObject()
                         .put("contents", new org.json.JSONArray()
                                 .put(new JSONObject()
@@ -109,7 +103,7 @@ public class WatchedMoviesActivity extends AppCompatActivity {
                                                 .put(new JSONObject()
                                                         .put("text", prompt)))));
 
-                java.net.URL url = new java.net.URL(apiUrl);
+                java.net.URL url = new java.net.URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY);
                 javax.net.ssl.HttpsURLConnection conn = (javax.net.ssl.HttpsURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json");
@@ -117,14 +111,11 @@ public class WatchedMoviesActivity extends AppCompatActivity {
                 conn.setConnectTimeout(15000);
                 conn.setReadTimeout(30000);
 
-                // Write request
                 java.io.OutputStream os = conn.getOutputStream();
                 os.write(requestBody.toString().getBytes("UTF-8"));
                 os.close();
 
                 int responseCode = conn.getResponseCode();
-
-                // Read response
                 java.io.InputStream is = responseCode == 200 ? conn.getInputStream() : conn.getErrorStream();
                 java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(is));
                 StringBuilder sb = new StringBuilder();
@@ -132,51 +123,44 @@ public class WatchedMoviesActivity extends AppCompatActivity {
                 while ((line = reader.readLine()) != null) sb.append(line);
                 reader.close();
 
-                String responseStr = sb.toString();
-                Log.d("GEMINI_RESPONSE", responseStr);
-
                 if (responseCode == 200) {
-                    JSONObject jsonResponse = new JSONObject(responseStr);
-                    String text = jsonResponse
+                    org.json.JSONObject jsonResponse = new org.json.JSONObject(sb.toString());
+                    String keyword = jsonResponse
                             .getJSONArray("candidates")
                             .getJSONObject(0)
                             .getJSONObject("content")
                             .getJSONArray("parts")
                             .getJSONObject(0)
-                            .getString("text");
+                            .getString("text")
+                            .trim()
+                            .toLowerCase()
+                            .replaceAll("[^a-z]", "");
+
+                    Log.d("AI_KEYWORD", "Keyword: " + keyword);
 
                     runOnUiThread(() -> {
                         if (progressBar != null) progressBar.setVisibility(View.GONE);
                         if (aiRecommendBtn != null) aiRecommendBtn.setEnabled(true);
-                        new AlertDialog.Builder(WatchedMoviesActivity.this)
-                                .setTitle("🎬 AI Movie Recommendations")
-                                .setMessage(text)
-                                .setPositiveButton("Awesome!", null)
-                                .show();
+
+                        // Navigate to VibeSearchActivity with the keyword pre-filled
+                        Intent intent = new Intent(WatchedMoviesActivity.this, VibeSearchActivity.class);
+                        intent.putExtra("vibe_query", keyword);
+                        startActivity(intent);
                     });
                 } else {
-                    String finalError = responseStr;
                     runOnUiThread(() -> {
                         if (progressBar != null) progressBar.setVisibility(View.GONE);
                         if (aiRecommendBtn != null) aiRecommendBtn.setEnabled(true);
-                        new AlertDialog.Builder(WatchedMoviesActivity.this)
-                                .setTitle("AI Error " + responseCode)
-                                .setMessage(finalError)
-                                .setPositiveButton("OK", null)
-                                .show();
+                        Toast.makeText(WatchedMoviesActivity.this, "AI failed, try again", Toast.LENGTH_SHORT).show();
                     });
                 }
 
             } catch (Exception e) {
-                Log.e("GEMINI_ERROR", e.toString());
+                Log.e("AI_ERROR", e.toString());
                 runOnUiThread(() -> {
                     if (progressBar != null) progressBar.setVisibility(View.GONE);
                     if (aiRecommendBtn != null) aiRecommendBtn.setEnabled(true);
-                    new AlertDialog.Builder(WatchedMoviesActivity.this)
-                            .setTitle("AI Error")
-                            .setMessage(e.toString())
-                            .setPositiveButton("OK", null)
-                            .show();
+                    Toast.makeText(WatchedMoviesActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
             }
         }).start();

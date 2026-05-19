@@ -18,7 +18,6 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -46,19 +45,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
-// Gemini AI SDK imports
-import com.google.ai.client.generativeai.GenerativeModel;
-import com.google.ai.client.generativeai.java.GenerativeModelFutures;
-import com.google.ai.client.generativeai.type.Content;
-import com.google.ai.client.generativeai.type.GenerateContentResponse;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-
 public class MainActivity extends AppCompatActivity {
 
     private static final String TMDB_API_KEY = BuildConfig.TMDB_API_KEY;
-    private static final String GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY;
     private static final String BASE_URL = "https://api.themoviedb.org/3/";
 
     private DrawerLayout drawerLayout;
@@ -168,7 +157,9 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(new Intent(MainActivity.this, WatchedMoviesActivity.class));
             } else if (id == R.id.nav_favorites) {
                 startActivity(new Intent(MainActivity.this, FavoritesActivity.class));
-            }
+            } else if (id == R.id.nav_mood_recommend) {
+            startActivity(new Intent(MainActivity.this, MoodScanActivity.class));
+        }
             drawerLayout.closeDrawer(GravityCompat.START);
             return true;
         });
@@ -196,7 +187,11 @@ public class MainActivity extends AppCompatActivity {
 
         searchInputLayout.setEndIconOnClickListener(v -> startVoiceSearch());
 
-        vibeSearchBtn.setOnClickListener(v -> performVibeSearch());
+        vibeSearchBtn.setOnClickListener(v -> {
+            // Navigate to dedicated Vibe Search Activity
+            Intent intent = new Intent(MainActivity.this, VibeSearchActivity.class);
+            startActivity(intent);
+        });
 
         logoutButton.setOnClickListener(v -> {
             mAuth.signOut();
@@ -246,51 +241,6 @@ public class MainActivity extends AppCompatActivity {
             myMovieAdapter.clearMovies();
             fetchMovies(false);
         });
-    }
-
-    private void performVibeSearch() {
-        if (searchEditText.getText() == null) return;
-        String query = searchEditText.getText().toString().trim();
-        if (query.isEmpty()) {
-            Toast.makeText(this, "Type a vibe first (e.g., 'rainy Sunday movie')", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        progressBar.setVisibility(View.VISIBLE);
-        vibeSearchBtn.setEnabled(false);
-
-        // Using Gemini AI SDK
-        GenerativeModel gm = new GenerativeModel("gemini-1.5-flash", GEMINI_API_KEY);
-        GenerativeModelFutures model = GenerativeModelFutures.from(gm);
-
-        Content content = new Content.Builder()
-                .addText("Extract 2 or 3 essential search keywords from this movie 'vibe' query. " +
-                        "Return ONLY the keywords separated by spaces, nothing else. Query: " + query)
-                .build();
-
-        ListenableFuture<GenerateContentResponse> response = model.generateContent(content);
-        Futures.addCallback(response, new FutureCallback<GenerateContentResponse>() {
-            @Override
-            public void onSuccess(GenerateContentResponse result) {
-                String keywords = result.getText().trim().replaceAll("[^a-zA-Z0-9 ]", "");
-                runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    vibeSearchBtn.setEnabled(true);
-                    searchEditText.setText(keywords);
-                    Toast.makeText(MainActivity.this, "AI Suggestion: " + keywords, Toast.LENGTH_SHORT).show();
-                });
-            }
-
-            @Override
-            public void onFailure(@NonNull Throwable t) {
-                Log.e("VIBE_SEARCH", "AI Error: " + t.getMessage(), t);
-                runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    vibeSearchBtn.setEnabled(true);
-                    Toast.makeText(MainActivity.this, "AI Search failed. Check logs.", Toast.LENGTH_LONG).show();
-                });
-            }
-        }, ContextCompat.getMainExecutor(this));
     }
 
     private void startVoiceSearch() {

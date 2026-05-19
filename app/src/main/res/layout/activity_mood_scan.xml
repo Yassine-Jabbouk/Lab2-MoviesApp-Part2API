@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F5F5">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/white"
+        app:titleTextColor="#E50914"
+        app:elevation="4dp" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="24dp">
+
+            <!-- Instructions -->
+            <TextView
+                android:id="@+id/tvInstructions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📸 Take a selfie and AI will detect your mood to recommend movies!"
+                android:textAlignment="center"
+                android:textSize="16sp"
+                android:textColor="#757575"
+                android:layout_marginBottom="24dp" />
+
+            <!-- Selfie Preview -->
+            <ImageView
+                android:id="@+id/imageViewSelfie"
+                android:layout_width="260dp"
+                android:layout_height="260dp"
+                android:scaleType="centerCrop"
+                android:background="#E0E0E0"
+                android:visibility="gone"
+                android:layout_marginBottom="24dp" />
+
+            <!-- Take Photo Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnTakePhoto"
+                android:layout_width="220dp"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#E50914"
+                android:text="📷 Take Selfie"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Scan Mood Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnScanMood"
+                android:layout_width="220dp"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#212121"
+                android:text="🔍 Scan My Mood"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                android:visibility="gone"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Progress Bar -->
+            <ProgressBar
+                android:id="@+id/progressBar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Mood Result -->
+            <TextView
+                android:id="@+id/tvMoodResult"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#E50914"
+                android:textAlignment="center"
+                android:visibility="gone" />
+
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>

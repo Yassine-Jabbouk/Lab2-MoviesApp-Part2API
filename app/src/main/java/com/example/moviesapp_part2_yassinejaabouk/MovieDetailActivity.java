@@ -44,8 +44,8 @@ import java.util.ArrayList;
 public class MovieDetailActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
-    private static final String TMDB_API_KEY = "d54cde38155b4c4da726ac95ed215079";
-    private static final String GOOGLE_API_KEY = "AIzaSyCwexL310B1d4UECYYfC2dpeLQOEMzkN28";
+    private static final String TMDB_API_KEY = BuildConfig.TMDB_API_KEY;
+    private static final String GOOGLE_API_KEY = BuildConfig.GEMINI_API_KEY;
     private static final String BASE_URL = "http://10.0.2.2:8000";
 
     private SupportMapFragment mapFragment;
