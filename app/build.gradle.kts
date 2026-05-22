@@ -27,6 +27,7 @@ android {
 
         buildConfigField("String", "GEMINI_API_KEY", "\"${localProperties.getProperty("GEMINI_API_KEY") ?: ""}\"")
         buildConfigField("String", "TMDB_API_KEY", "\"${localProperties.getProperty("TMDB_API_KEY") ?: ""}\"")
+        buildConfigField("String", "GOOGLE_MAP_KEY", "\"${localProperties.getProperty("GOOGLE_MAP_KEY") ?: ""}\"")
     }
 
     buildFeatures {
@@ -49,6 +50,7 @@ android {
 }
 
 dependencies {
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation(platform("com.google.firebase:firebase-bom:33.9.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")

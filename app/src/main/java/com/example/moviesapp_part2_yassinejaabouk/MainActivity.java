@@ -51,6 +51,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String BASE_URL = "https://api.themoviedb.org/3/";
 
     private DrawerLayout drawerLayout;
+
+    private float currentMinRating = 0f;
     private NavigationView navigationView;
     private RecyclerView recyclerView;
     private MyMovieAdapter myMovieAdapter;
@@ -125,7 +127,7 @@ public class MainActivity extends AppCompatActivity {
         updateNavHeader(user);
         setupNavigationDrawer();
         fetchGenres();
-        fetchMovies(false);
+        fetchMoviesDefault();
 
         setupListeners(layoutManager);
     }
@@ -222,25 +224,104 @@ public class MainActivity extends AppCompatActivity {
         chipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
             if (checkedIds.isEmpty()) {
                 selectedGenreId = -1;
-            } else {
-                int checkedId = checkedIds.get(0);
-                Chip chip = findViewById(checkedId);
-                if (chip != null && chip.getTag() != null) {
-                    selectedGenreId = (int) chip.getTag();
-                } else {
-                    selectedGenreId = -1;
-                    if (searchEditText.getText() != null && !searchEditText.getText().toString().isEmpty()) {
-                        searchEditText.setText(""); 
-                        return; 
-                    }
-                }
+                currentPage = 1;
+                allFetchedMovies.clear();
+                myMovieAdapter.clearMovies();
+                // Use search/movie with popular keyword as fallback
+                fetchMoviesDefault();
+                return;
             }
-            
+            int checkedId = checkedIds.get(0);
+            Chip chip = findViewById(checkedId);
+            if (chip != null && chip.getTag() != null) {
+                selectedGenreId = (int) chip.getTag();
+            } else {
+                selectedGenreId = -1;
+            }
             currentPage = 1;
             allFetchedMovies.clear();
             myMovieAdapter.clearMovies();
             fetchMovies(false);
         });
+    }
+    private void fetchMoviesDefault() {
+        if (isLoading) return;
+        isLoading = true;
+        progressBar.setVisibility(View.VISIBLE);
+
+        String today = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                .format(new java.util.Date());
+
+        String url = "https://api.themoviedb.org/3/movie/now_playing?api_key=" + TMDB_API_KEY + "&page=" + currentPage;
+
+        new Thread(() -> {
+            try {
+                java.net.URL urlObj = new java.net.URL(url);
+                javax.net.ssl.HttpsURLConnection conn = (javax.net.ssl.HttpsURLConnection) urlObj.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setRequestProperty("Accept-Encoding", "identity");
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(15000);
+
+                int responseCode = conn.getResponseCode();
+                java.io.InputStream rawStream = responseCode == 200 ? conn.getInputStream() : conn.getErrorStream();
+
+                String encoding = conn.getContentEncoding();
+                java.io.InputStream is;
+                if ("gzip".equalsIgnoreCase(encoding)) {
+                    is = new java.util.zip.GZIPInputStream(rawStream);
+                } else {
+                    is = rawStream;
+                }
+
+                java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(is, "UTF-8"));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) sb.append(line);
+                reader.close();
+
+                if (responseCode == 200) {
+                    JSONObject response = new JSONObject(sb.toString());
+                    JSONArray results = response.getJSONArray("results");
+                    List<MyMovieData> newBatch = new ArrayList<>();
+                    for (int i = 0; i < results.length(); i++) {
+                        JSONObject m = results.getJSONObject(i);
+
+                        // Skip future movies
+                        String releaseDate = m.optString("release_date", "");
+                        if (!releaseDate.isEmpty() && releaseDate.compareTo(today) > 0) {
+                            continue;
+                        }
+
+                        newBatch.add(new MyMovieData(
+                                m.getInt("id"),
+                                m.getString("title"),
+                                m.optString("release_date", "N/A"),
+                                m.optString("poster_path", ""),
+                                m.optDouble("vote_average", 0.0)
+                        ));
+                    }
+                    allFetchedMovies.addAll(newBatch);
+                    runOnUiThread(() -> {
+                        isLoading = false;
+                        progressBar.setVisibility(View.GONE);
+                        applyLocalSortAndFilter();
+                    });
+                } else {
+                    Log.e("MAIN_ERROR", "HTTP " + responseCode);
+                    runOnUiThread(() -> {
+                        isLoading = false;
+                        progressBar.setVisibility(View.GONE);
+                    });
+                }
+            } catch (Exception e) {
+                Log.e("MAIN_ERROR", e.toString());
+                runOnUiThread(() -> {
+                    isLoading = false;
+                    progressBar.setVisibility(View.GONE);
+                });
+            }
+        }).start();
     }
 
     private void startVoiceSearch() {
@@ -257,26 +338,29 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showFilterMenu(View view) {
-        PopupMenu popup = new PopupMenu(this, view);
-        popup.getMenu().add(1, 1, 1, "Popularity");
-        popup.getMenu().add(1, 2, 2, "Rating (High to Low)");
-        popup.getMenu().add(1, 3, 3, "Release Date (Newest)");
-        
-        popup.setOnMenuItemClickListener(item -> {
-            switch (item.getItemId()) {
-                case 1: sortBy = "popularity.desc"; break;
-                case 2: sortBy = "vote_average.desc"; break;
-                case 3: sortBy = "release_date.desc"; break;
-            }
-            applyLocalSortAndFilter();
-            return true;
+        FilterBottomSheet bottomSheet = new FilterBottomSheet();
+        bottomSheet.setCurrentFilters(sortBy, currentMinRating, selectedGenreId);
+        bottomSheet.setFilterListener((newSortBy, minRating, genreId) -> {
+            sortBy = newSortBy;
+            currentMinRating = minRating;
+            selectedGenreId = genreId;
+            currentPage = 1;
+            allFetchedMovies.clear();
+            myMovieAdapter.clearMovies();
+            fetchMovies(false);
         });
-        popup.show();
+        bottomSheet.show(getSupportFragmentManager(), "FilterBottomSheet");
     }
 
     private void applyLocalSortAndFilter() {
         List<MyMovieData> listToDisplay = new ArrayList<>(allFetchedMovies);
 
+        // Apply rating filter
+        if (currentMinRating > 0) {
+            listToDisplay.removeIf(m -> m.getRating() < currentMinRating);
+        }
+
+        // Apply sort
         if (sortBy.equals("vote_average.desc")) {
             listToDisplay.sort((m1, m2) -> Double.compare(m2.getRating(), m1.getRating()));
         } else if (sortBy.equals("release_date.desc")) {
@@ -316,6 +400,9 @@ public class MainActivity extends AppCompatActivity {
         isLoading = true;
         progressBar.setVisibility(View.VISIBLE);
 
+        String today = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                .format(new java.util.Date());
+
         String url;
         if (!currentSearchQuery.isEmpty()) {
             try {
@@ -323,49 +410,134 @@ public class MainActivity extends AppCompatActivity {
             } catch (UnsupportedEncodingException e) {
                 url = BASE_URL + "search/movie?api_key=" + TMDB_API_KEY + "&query=" + currentSearchQuery + "&page=" + currentPage;
             }
-        } else {
-            url = BASE_URL + "discover/movie?api_key=" + TMDB_API_KEY + "&sort_by=" + sortBy + "&page=" + currentPage;
-            if (selectedGenreId != -1) url += "&with_genres=" + selectedGenreId;
-        }
+            final String finalUrl = url;
+            JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, finalUrl, null,
+                    response -> {
+                        isLoading = false;
+                        progressBar.setVisibility(View.GONE);
+                        try {
+                            JSONArray results = response.getJSONArray("results");
+                            List<MyMovieData> newBatch = new ArrayList<>();
+                            for (int i = 0; i < results.length(); i++) {
+                                JSONObject m = results.getJSONObject(i);
 
-        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null,
-                response -> {
-                    isLoading = false;
-                    progressBar.setVisibility(View.GONE);
-                    try {
+                                // Skip future movies
+                                String releaseDate = m.optString("release_date", "");
+                                if (!releaseDate.isEmpty() && releaseDate.compareTo(today) > 0) {
+                                    continue;
+                                }
+
+                                MyMovieData movie = new MyMovieData(
+                                        m.getInt("id"),
+                                        m.getString("title"),
+                                        m.optString("release_date", "N/A"),
+                                        m.optString("poster_path", ""),
+                                        m.optDouble("vote_average", 0.0)
+                                );
+                                if (selectedGenreId != -1) {
+                                    JSONArray genreIds = m.optJSONArray("genre_ids");
+                                    boolean matchesGenre = false;
+                                    if (genreIds != null) {
+                                        for (int j = 0; j < genreIds.length(); j++) {
+                                            if (genreIds.getInt(j) == selectedGenreId) {
+                                                matchesGenre = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if (matchesGenre) newBatch.add(movie);
+                                } else {
+                                    newBatch.add(movie);
+                                }
+                            }
+                            allFetchedMovies.addAll(newBatch);
+                            applyLocalSortAndFilter();
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    },
+                    error -> {
+                        isLoading = false;
+                        progressBar.setVisibility(View.GONE);
+                        Log.e("MAIN_ERROR", error.toString());
+                    });
+            requestQueue.add(request);
+
+        } else {
+            String discoverUrl = "https://api.themoviedb.org/3/discover/movie?api_key=" + TMDB_API_KEY
+                    + "&sort_by=" + sortBy
+                    + "&page=" + currentPage
+                    + "&release_date.lte=" + today
+                    + (selectedGenreId != -1 ? "&with_genres=" + selectedGenreId : "");
+
+            new Thread(() -> {
+                try {
+                    java.net.URL urlObj = new java.net.URL(discoverUrl);
+                    javax.net.ssl.HttpsURLConnection conn = (javax.net.ssl.HttpsURLConnection) urlObj.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setRequestProperty("Accept-Encoding", "identity");
+                    conn.setConnectTimeout(15000);
+                    conn.setReadTimeout(15000);
+
+                    int responseCode = conn.getResponseCode();
+                    java.io.InputStream rawStream = responseCode == 200 ? conn.getInputStream() : conn.getErrorStream();
+
+                    String encoding = conn.getContentEncoding();
+                    java.io.InputStream is;
+                    if ("gzip".equalsIgnoreCase(encoding)) {
+                        is = new java.util.zip.GZIPInputStream(rawStream);
+                    } else {
+                        is = rawStream;
+                    }
+
+                    java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(is, "UTF-8"));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) sb.append(line);
+                    reader.close();
+
+                    if (responseCode == 200) {
+                        JSONObject response = new JSONObject(sb.toString());
                         JSONArray results = response.getJSONArray("results");
                         List<MyMovieData> newBatch = new ArrayList<>();
                         for (int i = 0; i < results.length(); i++) {
                             JSONObject m = results.getJSONObject(i);
-                            MyMovieData movie = new MyMovieData(m.getInt("id"), m.getString("title"), m.optString("release_date", "N/A"), m.optString("poster_path", ""), m.optDouble("vote_average", 0.0));
-                            
-                            if (!currentSearchQuery.isEmpty() && selectedGenreId != -1) {
-                                JSONArray genreIds = m.optJSONArray("genre_ids");
-                                boolean matchesGenre = false;
-                                if (genreIds != null) {
-                                    for(int j=0; j<genreIds.length(); j++) {
-                                        if(genreIds.getInt(j) == selectedGenreId) {
-                                            matchesGenre = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                if(matchesGenre) {
-                                    newBatch.add(movie);
-                                }
-                            } else {
-                                newBatch.add(movie);
-                            }
-                        }
-                        
-                        allFetchedMovies.addAll(newBatch);
-                        applyLocalSortAndFilter();
 
-                    } catch (JSONException e) { e.printStackTrace(); }
-                }, error -> {
-                    isLoading = false;
-                    progressBar.setVisibility(View.GONE);
-                });
-        requestQueue.add(request);
+                            // Skip future movies
+                            String releaseDate = m.optString("release_date", "");
+                            if (!releaseDate.isEmpty() && releaseDate.compareTo(today) > 0) {
+                                continue;
+                            }
+
+                            newBatch.add(new MyMovieData(
+                                    m.getInt("id"),
+                                    m.getString("title"),
+                                    m.optString("release_date", "N/A"),
+                                    m.optString("poster_path", ""),
+                                    m.optDouble("vote_average", 0.0)
+                            ));
+                        }
+                        allFetchedMovies.addAll(newBatch);
+                        runOnUiThread(() -> {
+                            isLoading = false;
+                            progressBar.setVisibility(View.GONE);
+                            applyLocalSortAndFilter();
+                        });
+                    } else {
+                        Log.e("MAIN_ERROR", "HTTP " + responseCode);
+                        runOnUiThread(() -> {
+                            isLoading = false;
+                            progressBar.setVisibility(View.GONE);
+                        });
+                    }
+                } catch (Exception e) {
+                    Log.e("MAIN_ERROR", e.toString());
+                    runOnUiThread(() -> {
+                        isLoading = false;
+                        progressBar.setVisibility(View.GONE);
+                    });
+                }
+            }).start();
+         }
     }
 }
